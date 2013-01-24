@@ -3,7 +3,7 @@
 /**
  * Page Edit Per User
  * 
- * Assign edit access to users on a per-page basis.
+ * Assign edit access to users on a per-page or per-branch basis.
  *
  * The user must already have page-edit permission on one of their roles in order to get 
  * edit access to assigned pages. Otherwise, they will only gain view access. 
@@ -16,13 +16,13 @@
  *
  */
 
-class PageEditPerUser extends WireData implements Module {
+class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Page Edit Per User', 
-			'version' => 1, 
-			'summary' => 'Assign edit access to users on a per-page basis.',
+			'version' => 2, 
+			'summary' => 'Assign edit access to users on a per-page or per-branch basis.',
 			'singular' => true, 
 			'autoload' => true, 
 			);
@@ -37,13 +37,36 @@ class PageEditPerUser extends WireData implements Module {
 		$this->addHookAfter('Page::viewable', $this, 'hookPageEditable'); 
 	}
 
+    /**
+     * Check if this page, or any ancestor pages, are editable
+     *
+     */
+    public function onMyBranch($page)
+    {
+        $page_on_my_branch = $this->user->editable_pages->has($page);
+
+        if ($this->scan_ancestors && !$page_on_my_branch) {
+            $parents = $page->parents();
+            while (!$page_on_my_branch && count($parents)) {
+                $p = $parents->pop();
+                $page_on_my_branch = $this->user->editable_pages->has($p);
+            }
+        }
+        return $page_on_my_branch;
+    }
+
 	/**
 	 * Page::editable hook
 	 *
 	 */
 	public function hookPageEditable($event) {
-		if($event->return) return;
-		$event->return = $this->user->hasPermission('page-edit') && $this->user->editable_pages->has($event->object);
+        if($event->return) return;
+
+        if ($this->user->hasPermission('page-edit')) {
+            $event->return = $this->onMyBranch($event->object);
+        } else {
+            $event->return = false;
+        }
 	}
 
 	/**
@@ -52,7 +75,7 @@ class PageEditPerUser extends WireData implements Module {
 	 */
 	public function hookPageViewable($event) {
 		if($event->return) return;
-		$event->return = $this->user->editable_pages->has($event->object);
+        $event->return = $this->onMyBranch($event->object);
 	}
 
 	/**
@@ -91,7 +114,33 @@ class PageEditPerUser extends WireData implements Module {
 		}
 		$this->fields->delete($field);
 		$this->message("Removed field: editable_pages");
-	}
+    }
 
+    /**
+     * Default settings used by this module
+     */
+    static protected $defaultSettings = array(
+        'scan_ancestors' => false,
+    );
+
+    /**
+     * Build a form allowing configuration of this Module
+     */
+    static public function getModuleConfigInputfields(array $data) {
+
+        $fields = new InputfieldWrapper();
+        $data = array_merge(self::$defaultSettings, $data);
+
+        // Scan ancestor nodes for edit permission?
+        $f = wire('modules')->get('InputfieldRadios');
+        $f->attr('name', 'scan_ancestors');
+        $f->label = __('Consider permissions further up the branch too?', __FILE__);
+        $f->addOption(false, __('No', __FILE__));
+        $f->addOption(true, __('Yes', __FILE__));
+        $f->attr('value', $data['scan_ancestors']);
+        $fields->add($f);
+
+        return $fields;
+    }
 }
 
