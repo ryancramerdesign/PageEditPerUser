@@ -11,8 +11,10 @@
  * This module is fully functional as-is, but intended as a proof-of-concept for those wanting
  * to go further with adding custom edit and/or view access.
  *
- * Copyright 2012 by Ryan Cramer 
+ * Copyright 2013 by Ryan Cramer 
  * http://processwire.com
+ *
+ * Per-branch editable additions by Netcarver, January 2013. 
  *
  */
 
@@ -37,36 +39,36 @@ class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 		$this->addHookAfter('Page::viewable', $this, 'hookPageEditable'); 
 	}
 
-    /**
-     * Check if this page, or any ancestor pages, are editable
-     *
-     */
-    public function onMyBranch($page)
-    {
-        $page_on_my_branch = $this->user->editable_pages->has($page);
-
-        if ($this->scan_ancestors && !$page_on_my_branch) {
-            $parents = $page->parents();
-            while (!$page_on_my_branch && count($parents)) {
-                $p = $parents->pop();
-                $page_on_my_branch = $this->user->editable_pages->has($p);
-            }
-        }
-        return $page_on_my_branch;
-    }
+	/**
+	 * Check if this page, or any ancestor pages, are editable
+	 *
+	 * From Netcarver
+	 *
+	 */
+	public function onMyBranch($page) {
+		$page_on_my_branch = $this->user->editable_pages->has($page);
+		if($this->scan_ancestors && !$page_on_my_branch) {
+			$parents = $page->parents();
+			while(!$page_on_my_branch && count($parents)) {
+				$p = $parents->pop();
+				$page_on_my_branch = $this->user->editable_pages->has($p);
+			}
+		}
+		return $page_on_my_branch;
+	}
 
 	/**
 	 * Page::editable hook
 	 *
 	 */
 	public function hookPageEditable($event) {
-        if($event->return) return;
+		if($event->return) return;
 
-        if ($this->user->hasPermission('page-edit')) {
-            $event->return = $this->onMyBranch($event->object);
-        } else {
-            $event->return = false;
-        }
+		if($this->user->hasPermission('page-edit')) {
+			$event->return = $this->onMyBranch($event->object);
+		} else {
+			$event->return = false;
+		}
 	}
 
 	/**
@@ -75,7 +77,7 @@ class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 	 */
 	public function hookPageViewable($event) {
 		if($event->return) return;
-        $event->return = $this->onMyBranch($event->object);
+		$event->return = $this->onMyBranch($event->object);
 	}
 
 	/**
@@ -114,33 +116,35 @@ class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 		}
 		$this->fields->delete($field);
 		$this->message("Removed field: editable_pages");
-    }
+	}
 
-    /**
-     * Default settings used by this module
-     */
-    static protected $defaultSettings = array(
-        'scan_ancestors' => false,
-    );
+	/**
+	 * Default settings used by this module
+	 *
+	 */
+	static protected $defaultSettings = array(
+		'scan_ancestors' => 0
+	);
 
-    /**
-     * Build a form allowing configuration of this Module
-     */
-    static public function getModuleConfigInputfields(array $data) {
+	/**
+	 * Build a form allowing configuration of this Module
+	 *
+	 */
+	static public function getModuleConfigInputfields(array $data) {
 
-        $fields = new InputfieldWrapper();
-        $data = array_merge(self::$defaultSettings, $data);
+		$fields = new InputfieldWrapper();
+		$data = array_merge(self::$defaultSettings, $data);
 
-        // Scan ancestor nodes for edit permission?
-        $f = wire('modules')->get('InputfieldRadios');
-        $f->attr('name', 'scan_ancestors');
-        $f->label = __('Consider permissions further up the branch too?', __FILE__);
-        $f->addOption(false, __('No', __FILE__));
-        $f->addOption(true, __('Yes', __FILE__));
-        $f->attr('value', $data['scan_ancestors']);
-        $fields->add($f);
+		// Scan ancestor nodes for edit permission?
+		$f = wire('modules')->get('InputfieldRadios');
+		$f->attr('name', 'scan_ancestors');
+		$f->label = __('Consider permissions further up the branch too?', __FILE__);
+		$f->addOption(0, __('No', __FILE__));
+		$f->addOption(1, __('Yes', __FILE__));
+		$f->attr('value', $data['scan_ancestors']);
+		$fields->add($f);
 
-        return $fields;
-    }
+		return $fields;
+	}
 }
 
