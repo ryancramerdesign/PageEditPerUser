@@ -35,13 +35,12 @@ class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 	 *
 	 */
 	public function init() {
-		if(!$this->user->isSuperuser()
-			&& $this->user->editable_pages
-			&& $this->user->editable_pages instanceof PageArray
-			&& count($this->user->editable_pages)
-		) {		
-			$this->addHookAfter('Page::editable', $this, 'hookPageEditable'); 
-			$this->addHookAfter('Page::viewable', $this, 'hookPageEditable');
+		if(!$this->user->isSuperuser()) {
+			$editable_pages = $this->user->editable_pages;
+			if($editable_pages instanceof PageArray && count($editable_pages)) {		
+				$this->addHookAfter('Page::editable', $this, 'hookPageEditable'); 
+				$this->addHookAfter('Page::viewable', $this, 'hookPageEditable');
+			}
 		}
 	}
 
