@@ -46,12 +46,12 @@ class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 	 *
 	 */
 	public function onMyBranch($page) {
-		$page_on_my_branch = $this->user->editable_pages->has($page);
+		$page_on_my_branch = ($this->user->editable_pages->has($page) || $this->user->editable_pages == $page);
 		if($this->scan_ancestors && !$page_on_my_branch) {
 			$parents = $page->parents();
 			while(!$page_on_my_branch && count($parents)) {
 				$p = $parents->pop();
-				$page_on_my_branch = $this->user->editable_pages->has($p);
+				$page_on_my_branch = ($this->user->editable_pages->has($p) || $this->user->editable_pages == $p);
 			}
 		}
 		return $page_on_my_branch;
