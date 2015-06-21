@@ -36,7 +36,7 @@ class PageEditPerUser extends WireData implements Module, ConfigurableModule {
 	 */
 	public function init() {
 		$this->addHookAfter('Page::editable', $this, 'hookPageEditable'); 
-		$this->addHookAfter('Page::viewable', $this, 'hookPageEditable'); 
+		$this->addHookAfter('Page::viewable', $this, 'hookPageViewable'); 
 	}
 
 	/**
